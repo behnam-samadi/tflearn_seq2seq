@@ -15,7 +15,8 @@ import tensorflow as tf
 
 from pattern import SequencePattern
 
-from tensorflow.python.ops import seq2seq
+#from tensorflow.python.ops import seq2seq
+import tensorflow.contrib.seq2seq as seq2seq
 from tensorflow.python.ops import rnn_cell
 
 #-----------------------------------------------------------------------------
