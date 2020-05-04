@@ -56,11 +56,17 @@ class TFLearnSeq2Seq(object):
         xy_data = numpy array of shape [num_points, in_seq_len + out_seq_len], with each point being X + Y
         y_data  = numpy array of shape [num_points, out_seq_len]
         '''
-        x_data = np.random.randint(0, self.in_max_int, size=(num_points, self.in_seq_len))		# shape [num_points, in_seq_len]
-        x_data = x_data.astype(np.uint32)						# ensure integer type
+        all_x = np.load("input_histograms.npy")
+        all_y = np.load("output_histograms.npy")
 
-        y_data = [ self.sequence_pattern.generate_output_sequence(x) for x in x_data ]
-        y_data = np.array(y_data)
+        x_data = all_x[0:num_points, :].astype(np.uint32)
+        y_data = all_y[0:num_points, :].astype(np.uint32)
+
+        #x_data = np.random.randint(0, self.in_max_int, size=(num_points, self.in_seq_len))		# shape [num_points, in_seq_len]
+        #x_data = x_data.astype(np.uint32)						# ensure integer type
+
+        #y_data = [ self.sequence_pattern.generate_output_sequence(x) for x in x_data ]
+        #y_data = np.array(y_data)
 
         xy_data = np.append(x_data, y_data, axis=1)		# shape [num_points, 2*seq_len]
         return xy_data, y_data
@@ -193,11 +199,10 @@ class TFLearnSeq2Seq(object):
         Returns logits for prediction, as an numpy array of shape [out_seq_len, n_output_symbols].
         '''
         trainXY, trainY = self.generate_trainig_data(num_points)
-        print ("[TFLearnSeq2Seq] Training on %d point dataset (pattern '%s'), with %d epochs" % (num_points, 
-                                                                                               self.sequence_pattern.PATTERN_NAME,
+        print ("[TFLearnSeq2Seq] Training on %d point dataset , with %d epochs" % (num_points, 
                                                                                                num_epochs))
-        if self.verbose > 1:
-            print ("  model parameters: %s" % json.dumps(model_params, indent=4))
+        #if self.verbose > 1:
+            #print ("  model parameters: %s" % json.dumps(model_params, indent=4))
         model_params = model_params or {}
         model = model or self.setup_model("train", model_params, weights_input_fn)
         
@@ -314,52 +319,69 @@ predict - give input sequence as argument (or specify inputs via --from-file <fi
 """
     parser = argparse.ArgumentParser(description=help_text, formatter_class=argparse.RawTextHelpFormatter)
     
-    parser.add_argument("cmd", help="command")
-    parser.add_argument("cmd_input", nargs='*', help="input to command")
-    parser.add_argument('-v', "--verbose", nargs=0, help="increase output verbosity (add more -v to increase versbosity)", action=VAction, dest='verbose')
-    parser.add_argument("-m", "--model", help="seq2seq model name: either embedding_rnn (default) or embedding_attention", default=None)
-    parser.add_argument("-r", "--learning-rate", type=float, help="learning rate (default 0.0001)", default=0.0001)
-    parser.add_argument("-e", "--epochs", type=int, help="number of trainig epochs", default=10)
-    parser.add_argument("-i", "--input-weights", type=str, help="tflearn file with network weights to load", default=None)
-    parser.add_argument("-o", "--output-weights", type=str, help="new tflearn file where network weights are to be saved", default=None)
-    parser.add_argument("-p", "--pattern-name", type=str, help="name of pattern to use for sequence", default=None)
-    parser.add_argument("-n", "--name", type=str, help="name of model, used when generating default weights filenames", default=None)
-    parser.add_argument("--in-len", type=int, help="input sequence length (default 10)", default=None)
-    parser.add_argument("--out-len", type=int, help="output sequence length (default 10)", default=None)
-    parser.add_argument("--from-file", type=str, help="name of file to take input data sequences from (json format)", default=None)
+    #parser.add_argument("cmd", help="command")
+    #parser.add_argument("cmd_input", nargs='*', help="input to command")
+    #parser.add_argument('-v', "--verbose", nargs=0, help="increase output verbosity (add more -v to increase versbosity)", action=VAction, dest='verbose')
+    #parser.add_argument("-m", "--model", help="seq2seq model name: either embedding_rnn (default) or embedding_attention", default=None)
+    #parser.add_argument("-r", "--learning-rate", type=float, help="learning rate (default 0.0001)", default=0.0001)
+    #parser.add_argument("-e", "--epochs", type=int, help="number of trainig epochs", default=10)
+    #parser.add_argument("-i", "--input-weights", type=str, help="tflearn file with network weights to load", default=None)
+    #parser.add_argument("-o", "--output-weights", type=str, help="new tflearn file where network weights are to be saved", default=None)
+    #parser.add_argument("-p", "--pattern-name", type=str, help="name of pattern to use for sequence", default=None)
+    #parser.add_argument("-n", "--name", type=str, help="name of model, used when generating default weights filenames", default=None)
+    #parser.add_argument("--in-len", type=int, help="input sequence length (default 10)", default=None)
+    #parser.add_argument("--out-len", type=int, help="output sequence length (default 10)", default=None)
+    #parser.add_argument("--from-file", type=str, help="name of file to take input data sequences from (json format)", default=None)
     parser.add_argument("--iter-num", type=int, help="training iteration number; specify instead of input- or output-weights to use generated filenames", default=None)
-    parser.add_argument("--data-dir", help="directory to use for storing checkpoints (also used when generating default weights filenames)", default=None)
+    #parser.add_argument("--data-dir", help="directory to use for storing checkpoints (also used when generating default weights filenames)", default=None)
     # model parameters
-    parser.add_argument("-L", "--num-layers", type=int, help="number of RNN layers to use in the model (default 1)", default=1)
-    parser.add_argument("--cell-size", type=int, help="size of RNN cell to use (default 32)", default=32)
-    parser.add_argument("--cell-type", type=str, help="type of RNN cell to use (default BasicLSTMCell)", default="BasicLSTMCell")
-    parser.add_argument("--embedding-size", type=int, help="size of embedding to use (default 20)", default=20)
-    parser.add_argument("--tensorboard-verbose", type=int, help="tensorboard verbosity level (default 0)", default=0)
+    #parser.add_argument("-L", "--num-layers", type=int, help="number of RNN layers to use in the model (default 1)", default=1)
+    #parser.add_argument("--cell-size", type=int, help="size of RNN cell to use (default 32)", default=32)
+    #parser.add_argument("--cell-type", type=str, help="type of RNN cell to use (default BasicLSTMCell)", default="BasicLSTMCell")
+    #parser.add_argument("--embedding-size", type=int, help="size of embedding to use (default 20)", default=20)
+    #parser.add_argument("--tensorboard-verbose", type=int, help="tensorboard verbosity level (default 0)", default=0)
 
     if not args:
         args = parser.parse_args(arglist)
     
+
+
+    p_num_layers = 64
+    p_cell_size = 32
+    p_cell_type = 'BasicLSTMCell'
+    p_embedding_size = 20
+    p_learning_rate = 0.0001
+    operation = 'train'
+    p_train_data_size = 10000
+    p_pattern_name = "sorted"
+    p_in_len = 256
+    p_out_len = 256
+    p_model = "embedding_rnn"
+    p_data_dir = "/models"
+    p_name = "test"
+    p_epochs = 10
+    p_input_weights = 1
+    p_ouput_weights = None
+    
+
     if args.iter_num is not None:
         args.input_weights = args.iter_num
         args.output_weights = args.iter_num + 1
 
-    model_params = dict(num_layers=args.num_layers,
-                        cell_size=args.cell_size,
-                        cell_type=args.cell_type,
-                        embedding_size=args.embedding_size,
-                        learning_rate=args.learning_rate,
-                        tensorboard_verbose=args.tensorboard_verbose,
+
+    model_params = dict(num_layers=p_num_layers,
+                        cell_size=p_cell_size,
+                        cell_type=p_cell_type,
+                        embedding_size=p_embedding_size,
+                        learning_rate=p_learning_rate,
                     )
 
-    if args.cmd=="train":
-        try:
-            num_points = int(args.cmd_input[0])
-        except:
-            raise Exception("Please specify the number of datapoints to use for training, as the first argument")
-        sp = SequencePattern(args.pattern_name, in_seq_len=args.in_len, out_seq_len=args.out_len)
-        ts2s = TFLearnSeq2Seq(sp, seq2seq_model=args.model, data_dir=args.data_dir, name=args.name, verbose=args.verbose)
-        ts2s.train(num_epochs=args.epochs, num_points=num_points, weights_output_fn=args.output_weights, 
-                   weights_input_fn=args.input_weights, model_params=model_params)
+    if operation=="train":
+        num_points = p_train_data_size
+        sp = SequencePattern(p_pattern_name, in_seq_len=p_in_len, out_seq_len=p_out_len)
+        ts2s = TFLearnSeq2Seq(sp, seq2seq_model=p_model, data_dir=p_data_dir, name=p_name)
+        ts2s.train(num_epochs=p_epochs, num_points=num_points, weights_output_fn=p_ouput_weights, 
+                   weights_input_fn=p_input_weights, model_params=model_params)
         return ts2s
         
     elif args.cmd=="predict":
