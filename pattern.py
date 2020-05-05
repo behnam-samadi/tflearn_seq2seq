@@ -11,7 +11,7 @@ class SequencePattern(object):
     OUTPUT_MAX_INT = 9
     PATTERN_NAME = "sorted"
 
-    def __init__(self, name=None, in_seq_len=None, out_seq_len=None):
+    def __init__(self, name=None, in_seq_len=None, out_seq_len=None, max_input=10, max_output=10):
         if name is not None:
             assert hasattr(self, "%s_sequence" % name)
             self.PATTERN_NAME = name
@@ -19,6 +19,12 @@ class SequencePattern(object):
             self.INPUT_SEQUENCE_LENGTH = in_seq_len
         if out_seq_len:
             self.OUTPUT_SEQUENCE_LENGTH = out_seq_len
+
+
+        if max_input:
+            self.INPUT_MAX_INT = max_input
+        if max_output:
+            self.OUTPUT_MAX_INT = max_output
 
     def generate_output_sequence(self, x):
         '''

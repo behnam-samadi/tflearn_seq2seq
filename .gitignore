@@ -88,3 +88,8 @@ ENV/
 # Rope project settings
 .ropeproject
 *.npy
+checkpoint
+test1.tfl.data-00000-of-00001
+test1.tfl.index
+test1.tfl.meta
+trained_weights_backup/

@@ -16,7 +16,8 @@ import tensorflow as tf
 from pattern import SequencePattern
 
 #from tensorflow.python.ops import seq2seq
-import tensorflow.contrib.seq2seq as seq2seq
+#import tensorflow.contrib.seq2seq as seq2seq
+import tensorflow.contrib.legacy_seq2seq as seq2seq
 from tensorflow.python.ops import rnn_cell
 
 #-----------------------------------------------------------------------------
@@ -59,8 +60,8 @@ class TFLearnSeq2Seq(object):
         all_x = np.load("input_histograms.npy")
         all_y = np.load("output_histograms.npy")
 
-        x_data = all_x[0:num_points, :].astype(np.uint32)
-        y_data = all_y[0:num_points, :].astype(np.uint32)
+        x_data = all_x[0:num_points].astype(np.uint32)
+        y_data = all_y[0:num_points].astype(np.uint32)
 
         #x_data = np.random.randint(0, self.in_max_int, size=(num_points, self.in_seq_len))		# shape [num_points, in_seq_len]
         #x_data = x_data.astype(np.uint32)						# ensure integer type
@@ -69,6 +70,21 @@ class TFLearnSeq2Seq(object):
         #y_data = np.array(y_data)
 
         xy_data = np.append(x_data, y_data, axis=1)		# shape [num_points, 2*seq_len]
+
+        print(x_data)
+        print(y_data)
+        print(xy_data)
+        print(x_data.shape)
+        print(y_data.shape)
+        print(xy_data.shape)
+        print(x_data.dtype)
+        print(y_data.dtype)
+        print(xy_data.dtype)
+        print(type(x_data))
+        print(type(y_data))
+        print(type(xy_data))
+
+        
         return xy_data, y_data
 
     def sequence_loss(self, y_pred, y_true):
@@ -77,8 +93,8 @@ class TFLearnSeq2Seq(object):
         then use seq2seq.sequence_loss to actually compute the loss function.
         '''
         if self.verbose > 2: print ("my_sequence_loss y_pred=%s, y_true=%s" % (y_pred, y_true))
-        logits = tf.unpack(y_pred, axis=1)		# list of [-1, num_decoder_synbols] elements
-        targets = tf.unpack(y_true, axis=1)		# y_true has shape [-1, self.out_seq_len]; unpack to list of self.out_seq_len [-1] elements
+        logits = tf.unstack(y_pred, axis=1)		# list of [-1, num_decoder_synbols] elements
+        targets = tf.unstack(y_true, axis=1)		# y_true has shape [-1, self.out_seq_len]; unpack to list of self.out_seq_len [-1] elements
         if self.verbose > 2:
             print ("my_sequence_loss logits=%s" % (logits,))
             print ("my_sequence_loss targets=%s" % (targets,))
@@ -117,12 +133,12 @@ class TFLearnSeq2Seq(object):
 
         network = tflearn.input_data(shape=[None, self.in_seq_len + self.out_seq_len], dtype=tf.int32, name="XY")
         encoder_inputs = tf.slice(network, [0, 0], [-1, self.in_seq_len], name="enc_in")	# get encoder inputs
-        encoder_inputs = tf.unpack(encoder_inputs, axis=1)					# transform into list of self.in_seq_len elements, each [-1]
+        encoder_inputs = tf.unstack(encoder_inputs, axis=1)					# transform into list of self.in_seq_len elements, each [-1]
 
         decoder_inputs = tf.slice(network, [0, self.in_seq_len], [-1, self.out_seq_len], name="dec_in")	# get decoder inputs
-        decoder_inputs = tf.unpack(decoder_inputs, axis=1)					# transform into list of self.out_seq_len elements, each [-1]
+        decoder_inputs = tf.unstack(decoder_inputs, axis=1)					# transform into list of self.out_seq_len elements, each [-1]
 
-        go_input = tf.mul( tf.ones_like(decoder_inputs[0], dtype=tf.int32), GO_VALUE ) # insert "GO" symbol as the first decoder input; drop the last decoder input
+        go_input = tf.multiply( tf.ones_like(decoder_inputs[0], dtype=tf.int32), GO_VALUE ) # insert "GO" symbol as the first decoder input; drop the last decoder input
         decoder_inputs = [go_input] + decoder_inputs[: self.out_seq_len-1]				# insert GO as first; drop last decoder input
 
         feed_previous = not (mode=="train")
@@ -167,7 +183,7 @@ class TFLearnSeq2Seq(object):
 
         # model_outputs: list of the same length as decoder_inputs of 2D Tensors with shape [batch_size x output_size] containing the generated outputs.
         if self.verbose > 2: print ("model outputs: %s" % model_outputs)
-        network = tf.pack(model_outputs, axis=1)		# shape [-1, n_decoder_inputs (= self.out_seq_len), num_decoder_symbols]
+        network = tf.stack(model_outputs, axis=1)		# shape [-1, n_decoder_inputs (= self.out_seq_len), num_decoder_symbols]
         if self.verbose > 2: print ("packed model outputs: %s" % network)
         
         if self.verbose > 3:
@@ -188,8 +204,8 @@ class TFLearnSeq2Seq(object):
         model = tflearn.DNN(network, tensorboard_verbose=tensorboard_verbose, checkpoint_path=checkpoint_path)
         return model
 
-    def train(self, num_epochs=20, num_points=100000, model=None, model_params=None, weights_input_fn=None, 
-              validation_set=0.1, snapshot_step=5000, batch_size=128, weights_output_fn=None):
+    def train(self, num_epochs=20, num_points=10, model=None, model_params=None, weights_input_fn=None, 
+              validation_set=0.1, snapshot_step=5000, batch_size=32, weights_output_fn=None):
         '''
         Train model, with specified number of epochs, and dataset size.
 
@@ -199,10 +215,11 @@ class TFLearnSeq2Seq(object):
         Returns logits for prediction, as an numpy array of shape [out_seq_len, n_output_symbols].
         '''
         trainXY, trainY = self.generate_trainig_data(num_points)
+        
         print ("[TFLearnSeq2Seq] Training on %d point dataset , with %d epochs" % (num_points, 
                                                                                                num_epochs))
-        #if self.verbose > 1:
-            #print ("  model parameters: %s" % json.dumps(model_params, indent=4))
+        
+        print ("  model parameters: %s" % json.dumps(model_params, indent=4))
         model_params = model_params or {}
         model = model or self.setup_model("train", model_params, weights_input_fn)
         
@@ -346,23 +363,26 @@ predict - give input sequence as argument (or specify inputs via --from-file <fi
     
 
 
-    p_num_layers = 64
+    p_num_layers = 3
     p_cell_size = 32
     p_cell_type = 'BasicLSTMCell'
-    p_embedding_size = 20
+    p_embedding_size = 32
     p_learning_rate = 0.0001
     operation = 'train'
-    p_train_data_size = 10000
+    p_train_data_size = 80
     p_pattern_name = "sorted"
     p_in_len = 256
     p_out_len = 256
     p_model = "embedding_rnn"
     p_data_dir = "/models"
-    p_name = "test"
-    p_epochs = 10
-    p_input_weights = 1
-    p_ouput_weights = None
-    
+    p_name = "test1"
+    p_epochs = 4
+    p_input_weights = None
+    p_ouput_weights = "test1.tfl"
+    A = np.load("input_histograms.npy").astype(np.uint32)
+    B = np.load("output_histograms.npy").astype(np.uint32)
+    max_input = np.max(A)
+    max_output = np.max(B)
 
     if args.iter_num is not None:
         args.input_weights = args.iter_num
@@ -378,23 +398,26 @@ predict - give input sequence as argument (or specify inputs via --from-file <fi
 
     if operation=="train":
         num_points = p_train_data_size
-        sp = SequencePattern(p_pattern_name, in_seq_len=p_in_len, out_seq_len=p_out_len)
+        sp = SequencePattern(p_pattern_name, in_seq_len=p_in_len, out_seq_len=p_out_len, max_input = max_input, max_output =max_output)
         ts2s = TFLearnSeq2Seq(sp, seq2seq_model=p_model, data_dir=p_data_dir, name=p_name)
         ts2s.train(num_epochs=p_epochs, num_points=num_points, weights_output_fn=p_ouput_weights, 
-                   weights_input_fn=p_input_weights, model_params=model_params)
+                   weights_input_fn=p_input_weights, model_params=model_params, batch_size = 8)
         return ts2s
         
-    elif args.cmd=="predict":
-        if args.from_file:
-            inputs = json.loads(args.from_file)
-        try:
-            input_x = list(map(int, args.cmd_input))
-            inputs = [input_x]
-        except:
-            raise Exception("Please provide a space-delimited input sequence as the argument")
+    elif operation=="predict":
+        A = np.load("intput_histograms.npy").astype(np.uint32)
+        A = A[-1, :]
+        inputs = A.tolist()
+        #if args.from_file:
+            #inputs = json.loads(args.from_file)
+        #try:
+            #input_x = list(map(int, args.cmd_input))
+            #inputs = [input_x]
+        #except:
+            #raise Exception("Please provide a space-delimited input sequence as the argument")
 
-        sp = SequencePattern(args.pattern_name, in_seq_len=args.in_len, out_seq_len=args.out_len)
-        ts2s = TFLearnSeq2Seq(sp, seq2seq_model=args.model, data_dir=args.data_dir, name=args.name, verbose=args.verbose)
+        sp = SequencePattern(p_pattern_name, in_seq_len=p_in_len, out_seq_len=p_out_len)
+        ts2s = TFLearnSeq2Seq(sp, seq2seq_model=p_model, data_dir=p_data_dir, name=p_name, verbose=args.verbose)
         results = []
         for x in inputs:
             prediction, y = ts2s.predict(x, weights_input_fn=args.input_weights, model_params=model_params)
@@ -409,151 +432,151 @@ predict - give input sequence as argument (or specify inputs via --from-file <fi
 #-----------------------------------------------------------------------------
 # unit tests
 
-def test_sp1():
-    '''
-    Test two different SequencePattern instances
-    '''
-    sp = SequencePattern("maxmin_dup")
-    y = sp.generate_output_sequence(range(10))
-    assert all(y==np.array([9, 0, 2, 3, 4, 5, 6, 7, 8, 9]))    
-    sp = SequencePattern("sorted")
-    y = sp.generate_output_sequence([5,6,1,2,9])
-    assert all(y==np.array([1, 2, 5, 6, 9]))
-    sp = SequencePattern("reversed")
-    y = sp.generate_output_sequence(range(10))
-    assert all(y==np.array([9, 8, 7, 6, 5, 4, 3, 2, 1, 0]))
+# def test_sp1():
+#     '''
+#     Test two different SequencePattern instances
+#     '''
+#     sp = SequencePattern("maxmin_dup")
+#     y = sp.generate_output_sequence(range(10))
+#     assert all(y==np.array([9, 0, 2, 3, 4, 5, 6, 7, 8, 9]))    
+#     sp = SequencePattern("sorted")
+#     y = sp.generate_output_sequence([5,6,1,2,9])
+#     assert all(y==np.array([1, 2, 5, 6, 9]))
+#     sp = SequencePattern("reversed")
+#     y = sp.generate_output_sequence(range(10))
+#     assert all(y==np.array([9, 8, 7, 6, 5, 4, 3, 2, 1, 0]))
 
-def test_sp2():
-    '''
-    Test two SequencePattern instance with lengths different from default
-    '''
-    sp = SequencePattern("sorted", in_seq_len=20, out_seq_len=5)
-    x = np.random.randint(0, 9, 20)
-    y = sp.generate_output_sequence(x)
-    assert len(y)==5
-    y_exp = sorted(x)[:5]
-    assert all(y==y_exp)
+# def test_sp2():
+#     '''
+#     Test two SequencePattern instance with lengths different from default
+#     '''
+#     sp = SequencePattern("sorted", in_seq_len=20, out_seq_len=5)
+#     x = np.random.randint(0, 9, 20)
+#     y = sp.generate_output_sequence(x)
+#     assert len(y)==5
+#     y_exp = sorted(x)[:5]
+#     assert all(y==y_exp)
 
-def test_train1():
-    '''
-    Test simple training of an embedding_rnn seq2seq model
-    '''
-    sp = SequencePattern()
-    ts2s = TFLearnSeq2Seq(sp)
-    ofn = "test_%s" % ts2s.canonical_weights_fn(0)
-    print ("using weights filename %s" % ofn)
-    if os.path.exists(ofn):
-        os.unlink(ofn)
-    tf.reset_default_graph()
-    ts2s.train(num_epochs=1, num_points=10000, weights_output_fn=ofn)
-    assert os.path.exists(ofn)
+# def test_train1():
+#     '''
+#     Test simple training of an embedding_rnn seq2seq model
+#     '''
+#     sp = SequencePattern()
+#     ts2s = TFLearnSeq2Seq(sp)
+#     ofn = "test_%s" % ts2s.canonical_weights_fn(0)
+#     print ("using weights filename %s" % ofn)
+#     if os.path.exists(ofn):
+#         os.unlink(ofn)
+#     tf.reset_default_graph()
+#     ts2s.train(num_epochs=1, num_points= 10, weights_output_fn=ofn)
+#     assert os.path.exists(ofn)
 
-def test_predict1():
-    '''
-    Test simple preductions using weights just produced (in test_train1)
-    '''
-    sp = SequencePattern()
-    ts2s = TFLearnSeq2Seq(sp, verbose=1)
-    wfn = "test_%s" % ts2s.canonical_weights_fn(0)
-    print ("using weights filename %s" % wfn)
-    tf.reset_default_graph()
-    prediction, y = ts2s.predict(Xin=range(10), weights_input_fn=wfn)
-    assert len(prediction==10)
+# def test_predict1():
+#     '''
+#     Test simple preductions using weights just produced (in test_train1)
+#     '''
+#     sp = SequencePattern()
+#     ts2s = TFLearnSeq2Seq(sp, verbose=1)
+#     wfn = "test_%s" % ts2s.canonical_weights_fn(0)
+#     print ("using weights filename %s" % wfn)
+#     tf.reset_default_graph()
+#     prediction, y = ts2s.predict(Xin=range(10), weights_input_fn=wfn)
+#     assert len(prediction==10)
 
-def test_train_predict2():
-    '''
-    Test that the embedding_attention model works, with saving and loading of weights
-    '''
-    import tempfile
-    sp = SequencePattern()
-    tempdir = tempfile.mkdtemp()
-    ts2s = TFLearnSeq2Seq(sp, seq2seq_model="embedding_attention", data_dir=tempdir, name="attention")
-    tf.reset_default_graph()
-    ts2s.train(num_epochs=1, num_points=1000, weights_output_fn=1, weights_input_fn=0)
-    assert os.path.exists(ts2s.weights_output_fn)
+# def test_train_predict2():
+#     '''
+#     Test that the embedding_attention model works, with saving and loading of weights
+#     '''
+#     import tempfile
+#     sp = SequencePattern()
+#     tempdir = tempfile.mkdtemp()
+#     ts2s = TFLearnSeq2Seq(sp, seq2seq_model="embedding_attention", data_dir=tempdir, name="attention")
+#     tf.reset_default_graph()
+#     ts2s.train(num_epochs=1, num_points=10, weights_output_fn=1, weights_input_fn=0)
+#     assert os.path.exists(ts2s.weights_output_fn)
 
-    tf.reset_default_graph()
-    ts2s = TFLearnSeq2Seq(sp, seq2seq_model="embedding_attention", data_dir="DATA", name="attention", verbose=1)
-    prediction, y = ts2s.predict(Xin=range(10), weights_input_fn=1)
-    assert len(prediction==10)
+#     tf.reset_default_graph()
+#     ts2s = TFLearnSeq2Seq(sp, seq2seq_model="embedding_attention", data_dir="DATA", name="attention", verbose=1)
+#     prediction, y = ts2s.predict(Xin=range(10), weights_input_fn=1)
+#     assert len(prediction==10)
 
-    os.system("rm -rf %s" % tempdir)
+#     os.system("rm -rf %s" % tempdir)
 
-def test_train_predict3():
-    '''
-    Test that a model trained on sequencees of one length can be used for predictions on other sequence lengths
-    '''
-    import tempfile
-    sp = SequencePattern("sorted", in_seq_len=10, out_seq_len=10)
-    tempdir = tempfile.mkdtemp()
-    ts2s = TFLearnSeq2Seq(sp, seq2seq_model="embedding_attention", data_dir=tempdir, name="attention")
-    tf.reset_default_graph()
-    ts2s.train(num_epochs=1, num_points=1000, weights_output_fn=1, weights_input_fn=0)
-    assert os.path.exists(ts2s.weights_output_fn)
+# def test_train_predict3():
+#     '''
+#     Test that a model trained on sequencees of one length can be used for predictions on other sequence lengths
+#     '''
+#     import tempfile
+#     sp = SequencePattern("sorted", in_seq_len=10, out_seq_len=10)
+#     tempdir = tempfile.mkdtemp()
+#     ts2s = TFLearnSeq2Seq(sp, seq2seq_model="embedding_attention", data_dir=tempdir, name="attention")
+#     tf.reset_default_graph()
+#     ts2s.train(num_epochs=1, num_points=10, weights_output_fn=1, weights_input_fn=0)
+#     assert os.path.exists(ts2s.weights_output_fn)
 
-    tf.reset_default_graph()
-    sp = SequencePattern("sorted", in_seq_len=20, out_seq_len=8)
-    tf.reset_default_graph()
-    ts2s = TFLearnSeq2Seq(sp, seq2seq_model="embedding_attention", data_dir="DATA", name="attention", verbose=1)
-    x = np.random.randint(0, 9, 20)
-    prediction, y = ts2s.predict(x, weights_input_fn=1)
-    assert len(prediction==8)
+#     tf.reset_default_graph()
+#     sp = SequencePattern("sorted", in_seq_len=20, out_seq_len=8)
+#     tf.reset_default_graph()
+#     ts2s = TFLearnSeq2Seq(sp, seq2seq_model="embedding_attention", data_dir="DATA", name="attention", verbose=1)
+#     x = np.random.randint(0, 9, 20)
+#     prediction, y = ts2s.predict(x, weights_input_fn=1)
+#     assert len(prediction==8)
 
-    os.system("rm -rf %s" % tempdir)
+#     os.system("rm -rf %s" % tempdir)
 
-def test_main1():
-    '''
-    Integration test - training
-    '''
-    import tempfile
-    tempdir = tempfile.mkdtemp()
-    arglist = "--data-dir %s -e 2 --iter-num=1 -v -v --tensorboard-verbose=1 train 5000" % tempdir
-    arglist = arglist.split(' ')
-    tf.reset_default_graph()
-    ts2s = CommandLine(arglist=arglist)
-    assert os.path.exists(ts2s.weights_output_fn)
-    os.system("rm -rf %s" % tempdir)
+# def test_main1():
+#     '''
+#     Integration test - training
+#     '''
+#     import tempfile
+#     tempdir = tempfile.mkdtemp()
+#     arglist = "--data-dir %s -e 2 --iter-num=1 -v -v --tensorboard-verbose=1 train 5000" % tempdir
+#     arglist = arglist.split(' ')
+#     tf.reset_default_graph()
+#     ts2s = CommandLine(arglist=arglist)
+#     assert os.path.exists(ts2s.weights_output_fn)
+#     os.system("rm -rf %s" % tempdir)
 
-def test_main2():
-    '''
-    Integration test - training then prediction
-    '''
-    import tempfile
-    tempdir = tempfile.mkdtemp()
-    arglist = "--data-dir %s -e 2 --iter-num=1 -v -v --tensorboard-verbose=1 train 5000" % tempdir
-    arglist = arglist.split(' ')
-    tf.reset_default_graph()
-    ts2s = CommandLine(arglist=arglist)
-    wfn = ts2s.weights_output_fn
-    assert os.path.exists(wfn)
+# def test_main2():
+#     '''
+#     Integration test - training then prediction
+#     '''
+#     import tempfile
+#     tempdir = tempfile.mkdtemp()
+#     arglist = "--data-dir %s -e 2 --iter-num=1 -v -v --tensorboard-verbose=1 train 5000" % tempdir
+#     arglist = arglist.split(' ')
+#     tf.reset_default_graph()
+#     ts2s = CommandLine(arglist=arglist)
+#     wfn = ts2s.weights_output_fn
+#     assert os.path.exists(wfn)
 
-    arglist = "-i %s predict 1 2 3 4 5 6 7 8 9 0" % wfn
-    arglist = arglist.split(' ')
-    tf.reset_default_graph()
-    ts2s = CommandLine(arglist=arglist)
-    assert len(ts2s.prediction_results[0][0])==10
+#     arglist = "-i %s predict 1 2 3 4 5 6 7 8 9 0" % wfn
+#     arglist = arglist.split(' ')
+#     tf.reset_default_graph()
+#     ts2s = CommandLine(arglist=arglist)
+#     assert len(ts2s.prediction_results[0][0])==10
 
-    os.system("rm -rf %s" % tempdir)
+#     os.system("rm -rf %s" % tempdir)
 
-def test_main3():
-    '''
-    Integration test - training then prediction: attention model
-    '''
-    import tempfile
-    wfn = "tmp_weights.tfl"
-    if os.path.exists(wfn):
-        os.unlink(wfn)
-    arglist = "-e 2 -o tmp_weights.tfl -v -v -v -v -m embedding_attention train 5000"
-    arglist = arglist.split(' ')
-    tf.reset_default_graph()
-    ts2s = CommandLine(arglist=arglist)
-    assert os.path.exists(wfn)
+# def test_main3():
+#     '''
+#     Integration test - training then prediction: attention model
+#     '''
+#     import tempfile
+#     wfn = "tmp_weights.tfl"
+#     if os.path.exists(wfn):
+#         os.unlink(wfn)
+#     arglist = "-e 2 -o tmp_weights.tfl -v -v -v -v -m embedding_attention train 5000"
+#     arglist = arglist.split(' ')
+#     tf.reset_default_graph()
+#     ts2s = CommandLine(arglist=arglist)
+#     assert os.path.exists(wfn)
 
-    arglist = "-i tmp_weights.tfl -v -v -v -v -m embedding_attention predict 1 2 3 4 5 6 7 8 9 0" 
-    arglist = arglist.split(' ')
-    tf.reset_default_graph()
-    ts2s = CommandLine(arglist=arglist)
-    assert len(ts2s.prediction_results[0][0])==10
+#     arglist = "-i tmp_weights.tfl -v -v -v -v -m embedding_attention predict 1 2 3 4 5 6 7 8 9 0" 
+#     arglist = arglist.split(' ')
+#     tf.reset_default_graph()
+#     ts2s = CommandLine(arglist=arglist)
+#     assert len(ts2s.prediction_results[0][0])==10
 
 #-----------------------------------------------------------------------------
 
