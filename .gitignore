@@ -93,3 +93,8 @@ test1.tfl.data-00000-of-00001
 test1.tfl.index
 test1.tfl.meta
 trained_weights_backup/
+
+test5epochs.tfl.data-00000-of-00001
+test5epochs.tfl.index
+test5epochs.tfl.meta
+

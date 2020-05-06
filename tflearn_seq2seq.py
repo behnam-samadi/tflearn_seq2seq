@@ -267,14 +267,17 @@ class TFLearnSeq2Seq(object):
         model_params = model_params or {}
         model = self.model_instance or self.model(mode=mode, **model_params)
         self.model_instance = model
-        if weights_input_fn:
-            if type(weights_input_fn)==int:
-                weights_input_fn = self.canonical_weights_fn(weights_input_fn)
-            if os.path.exists(weights_input_fn):
-                model.load(weights_input_fn)
-                print ("[TFLearnSeq2Seq] model weights loaded from %s" % weights_input_fn)
-            else:
-                print ("[TFLearnSeq2Seq] MISSING model weights file %s" % weights_input_fn)
+        if weights_input_fn is not None:
+            model.load(weights_input_fn)
+        #if weights_input_fn:
+            #if type(weights_input_fn)==int:
+                #weights_input_fn = self.canonical_weights_fn(weights_input_fn)
+            #if os.path.exists(weights_input_fn):
+                #model.load(weights_input_fn)
+                #print ("[TFLearnSeq2Seq] model weights loaded from %s" % weights_input_fn)
+            #else:
+                #print(weights_input_fn)
+                #print ("[TFLearnSeq2Seq] MISSING model weights file %s" % weights_input_fn)
         return model
 
     def predict(self, Xin, model=None, model_params=None, weights_input_fn=None):
@@ -293,6 +296,7 @@ class TFLearnSeq2Seq(object):
         if self.verbose: print ("Xin = %s" % str(Xin))
 
         X = np.array(Xin).astype(np.uint32)
+        
         assert len(X)==self.in_seq_len
         if self.verbose:
             print ("X Input shape=%s, data=%s" % (X.shape, X))
@@ -368,17 +372,18 @@ predict - give input sequence as argument (or specify inputs via --from-file <fi
     p_cell_type = 'BasicLSTMCell'
     p_embedding_size = 32
     p_learning_rate = 0.0001
-    operation = 'train'
-    p_train_data_size = 80
+    operation = 'predict'
+    p_train_data_size = 10000
     p_pattern_name = "sorted"
     p_in_len = 256
     p_out_len = 256
     p_model = "embedding_rnn"
-    p_data_dir = "/models"
+    p_data_dir = "models"
     p_name = "test1"
-    p_epochs = 4
-    p_input_weights = None
-    p_ouput_weights = "test1.tfl"
+    p_epochs = 3
+    p_input_weights = "/share/users/bsamadi/seq2seq/tflearn_seq2seq/test5epochs.tfl"
+    #p_input_weights = None
+    p_ouput_weights = None
     A = np.load("input_histograms.npy").astype(np.uint32)
     B = np.load("output_histograms.npy").astype(np.uint32)
     max_input = np.max(A)
@@ -405,8 +410,8 @@ predict - give input sequence as argument (or specify inputs via --from-file <fi
         return ts2s
         
     elif operation=="predict":
-        A = np.load("intput_histograms.npy").astype(np.uint32)
-        A = A[-1, :]
+        A = np.load("input_histograms.npy").astype(np.uint32)
+        A = A[9000:9002, :]
         inputs = A.tolist()
         #if args.from_file:
             #inputs = json.loads(args.from_file)
@@ -416,13 +421,15 @@ predict - give input sequence as argument (or specify inputs via --from-file <fi
         #except:
             #raise Exception("Please provide a space-delimited input sequence as the argument")
 
-        sp = SequencePattern(p_pattern_name, in_seq_len=p_in_len, out_seq_len=p_out_len)
-        ts2s = TFLearnSeq2Seq(sp, seq2seq_model=p_model, data_dir=p_data_dir, name=p_name, verbose=args.verbose)
+        sp = SequencePattern(p_pattern_name, in_seq_len=p_in_len, out_seq_len=p_out_len, max_input = max_input, max_output =max_output)
+        ts2s = TFLearnSeq2Seq(sp, seq2seq_model=p_model, data_dir=p_data_dir, name=p_name)
         results = []
         for x in inputs:
-            prediction, y = ts2s.predict(x, weights_input_fn=args.input_weights, model_params=model_params)
-            print("==> For input %s, prediction=%s (expected=%s)" % (x, prediction, sp.generate_output_sequence(x)))
-            results.append([prediction, y])
+            prediction, y = ts2s.predict(x, weights_input_fn=p_input_weights, model_params=model_params)
+            #print("==> For input %s, prediction=%s (expected=%s)" % (x, prediction, sp.generate_output_sequence(x)))
+            results.append([prediction])
+        print(results)
+        exit()
         ts2s.prediction_results = results
         return ts2s
 
