@@ -98,3 +98,21 @@ test5epochs.tfl.data-00000-of-00001
 test5epochs.tfl.index
 test5epochs.tfl.meta
 
+*.meta
+*.index
+00000-of-00001*
+
+
+
+plus_hundred.data-00000-of-00001
+plus_hundred_general.data-00000-of-00001
+plus_hundred_general_l1.data-00000-of-00001
+plus_hundred_general_l1_3000.data-00000-of-00001
+plus_hundred_general_l1_khodesh.data-00000-of-00001
+plus_hundred_general_l1_khodesh2.data-00000-of-00001
+plus_one.data-00000-of-00001
+replace.data-00000-of-00001
+test_alaki.data-00000-of-00001
+test_hamani.data-00000-of-00001
+test_hame_yek.data-00000-of-00001
+
