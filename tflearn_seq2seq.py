@@ -101,43 +101,53 @@ class TFLearnSeq2Seq(object):
         
         # return xy_data, y_data
 
-        all_x = np.load("input_histograms.npy").astype(np.uint32)
-        all_y = np.load("output_histograms.npy").astype(np.uint32)
+        # all_x = np.load("input_histograms.npy").astype(np.uint32)
+        # all_y = np.load("output_histograms.npy").astype(np.uint32)
+
+        # x_data = np.random.randint(0, self.in_max_int, size=(num_points, self.in_seq_len))		# shape [num_points, in_seq_len]
+        # x_data = x_data.astype(np.uint32)						# ensure integer type
+
+        # y_data = [ self.sequence_pattern.generate_output_sequence(x) for x in x_data ]
+        # y_data = np.array(y_data)
+
+
+
+        # print(x_data)
+        # print("in x_data")
+        # print(y_data)
+        # print(type(x_data), x_data.shape)
+        # print(type(y_data), y_data.shape)
+        # print(y_data.shape)
+
+        # print("ghesmate aval=============")
+        
+        # shape1 , shape2 = y_data.shape
+        # print(x_data.shape)
+        
+
+        # for i in range(shape1):
+        #     for j in range(shape2):
+        #         #print(x_data[i,j])
+        #         x_data[i,j] = all_x[i,j]
+        #         y_data[i,j] = all_y[i,j]
+        
+        # print("ghesmate dovom=============")
+
+        # print(x_data)
+        # print(y_data)
+        # print(type(x_data), x_data.shape)
+        # print(type(y_data), y_data.shape)
+        
+        # y_data = [ self.sequence_pattern.generate_output_sequence(x) for x in x_data ]
+
+
+
 
         x_data = np.random.randint(0, self.in_max_int, size=(num_points, self.in_seq_len))		# shape [num_points, in_seq_len]
         x_data = x_data.astype(np.uint32)						# ensure integer type
 
         y_data = [ self.sequence_pattern.generate_output_sequence(x) for x in x_data ]
         y_data = np.array(y_data)
-
-
-
-        print(x_data)
-        print("in x_data")
-        print(y_data)
-        print(type(x_data), x_data.shape)
-        print(type(y_data), y_data.shape)
-        print(y_data.shape)
-
-        print("ghesmate aval=============")
-        
-        shape1 , shape2 = y_data.shape
-        print(x_data.shape)
-        
-
-        for i in range(shape1):
-            for j in range(shape2):
-                #print(x_data[i,j])
-                x_data[i,j] = all_x[i,j]
-                y_data[i,j] = all_y[i,j]
-        
-        print("ghesmate dovom=============")
-
-        print(x_data)
-        print(y_data)
-        print(type(x_data), x_data.shape)
-        print(type(y_data), y_data.shape)
-        
 
         xy_data = np.append(x_data, y_data, axis=1)		# shape [num_points, 2*seq_len]
         
@@ -360,6 +370,7 @@ class TFLearnSeq2Seq(object):
         
 
         
+        print(len(X))
         
         assert len(X)==self.in_seq_len
         if self.verbose:
@@ -432,30 +443,32 @@ predict - give input sequence as argument (or specify inputs via --from-file <fi
 
 
     p_num_layers = 1
-    p_cell_size = 32
+    p_cell_size = 256
     p_cell_type = 'BasicLSTMCell'
-    p_embedding_size = 32
+    p_embedding_size = 256
     p_learning_rate = 0.0001
-    operation = "predict"
-    p_train_data_size = 3000
+    operation = "train"
+    p_train_data_size = 10000
     p_pattern_name = "sorted"
-    p_in_len = 8
-    p_out_len = 8
+    p_in_len = 256
+    p_out_len = 256
     p_model = "embedding_rnn"
     p_data_dir = "models"
     p_name = "test1"
-    p_epochs = 2
-    p_input_weights = "/share/users/bsamadi/seq2seq/tflearn_seq2seq/replace"
+    p_epochs = 1
+    #p_input_weights = "/share/users/bsamadi/seq2seq/tflearn_seq2seq/sort_256_orig_input"
     p_input_weights = None
     #p_ouput_weights = "test_hame_yek"
-    #p_ouput_weights = "test_hamani"
-    p_ouput_weights = None
+    #p_ouput_weights = "sort_256"
+    #p_ouput_weights = "sort_256_orig_input"
     #p_ouput_weights = ""
-    #p_ouput_weights = "replace"
+    p_ouput_weights = "cell256_sort"
+    #p_ouput_weights = "try_on_hist"
+    #p_ouput_weights = None
     A = np.load("input_histograms.npy").astype(np.uint32)
     B = np.load("output_histograms.npy").astype(np.uint32)
     max_input = np.max(A)
-    max_output = np.max(B)
+    max_output = np.max(A)
 
     #max_input = 3000
     #max_output = 3000
@@ -482,11 +495,11 @@ predict - give input sequence as argument (or specify inputs via --from-file <fi
         
     elif operation=="predict":
         A = np.load("input_histograms.npy").astype(np.uint32)
-        A = A[0:1, 0:8]
-        A = np.array([6,8,3,2,1,6,7,8])
+        A = A[0:1, :]
+        A = np.array(A)
         print(A)
         
-        inputs = [A]
+        inputs = A
         print(inputs)
         
         #if args.from_file:
