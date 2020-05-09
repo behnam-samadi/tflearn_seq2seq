@@ -443,30 +443,30 @@ predict - give input sequence as argument (or specify inputs via --from-file <fi
 
 
     p_num_layers = 1
-    p_cell_size = 256
+    p_cell_size = 32
     p_cell_type = 'BasicLSTMCell'
-    p_embedding_size = 256
+    p_embedding_size = 32
     p_learning_rate = 0.0001
     operation = "train"
     p_train_data_size = 10000
     p_pattern_name = "sorted"
-    p_in_len = 256
-    p_out_len = 256
+    p_in_len = 32
+    p_out_len = 32
     p_model = "embedding_rnn"
     p_data_dir = "models"
     p_name = "test1"
-    p_epochs = 1
-    #p_input_weights = "/share/users/bsamadi/seq2seq/tflearn_seq2seq/sort_256_orig_input"
+    p_epochs = 50
+    #p_input_weights = "/share/users/bsamadi/seq2seq/tflearn_seq2seq/sort_32_orig_input"
     p_input_weights = None
     #p_ouput_weights = "test_hame_yek"
     #p_ouput_weights = "sort_256"
     #p_ouput_weights = "sort_256_orig_input"
     #p_ouput_weights = ""
-    p_ouput_weights = "cell256_sort"
+    p_ouput_weights = "orig_32"
     #p_ouput_weights = "try_on_hist"
     #p_ouput_weights = None
-    A = np.load("input_histograms.npy").astype(np.uint32)
-    B = np.load("output_histograms.npy").astype(np.uint32)
+    A = np.load("input_histograms_32.npy").astype(np.uint32)
+    B = np.load("output_histograms_32.npy").astype(np.uint32)
     max_input = np.max(A)
     max_output = np.max(A)
 
@@ -494,7 +494,7 @@ predict - give input sequence as argument (or specify inputs via --from-file <fi
         return ts2s
         
     elif operation=="predict":
-        A = np.load("input_histograms.npy").astype(np.uint32)
+        A = np.load("input_histograms_32.npy").astype(np.uint32)
         A = A[0:1, :]
         A = np.array(A)
         print(A)
